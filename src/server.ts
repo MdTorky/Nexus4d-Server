@@ -42,7 +42,11 @@ app.get('/', (req, res) => {
     res.send('Nexus 4D API is running');
 });
 
-// Start Server
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-});
+// Start Server (Only if not running on Vercel)
+if (require.main === module) {
+    app.listen(PORT, () => {
+        console.log(`Server running on port ${PORT}`);
+    });
+}
+
+export default app;
