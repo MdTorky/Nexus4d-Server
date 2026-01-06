@@ -31,11 +31,13 @@ app.use(morgan('dev'));
 import authRoutes from './routes/auth.routes';
 import courseRoutes from './routes/course.routes';
 import paymentRoutes from './routes/payment.routes';
+import userRoutes from './routes/user.routes';
 
 // Mount Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/user', userRoutes);
 
 // Base Route
 app.get('/', (req, res) => {

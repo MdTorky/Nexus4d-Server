@@ -3,6 +3,8 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
 import User from '../models/User';
+import Avatar from '../models/Avatar';
+import UserAvatar from '../models/UserAvatar';
 import generateTokens from '../utils/generateTokens';
 import { z } from 'zod';
 import sendEmail from '../utils/sendEmail';
@@ -37,11 +39,30 @@ export const registerUser = async (req: Request, res: Response) => {
     const salt = await bcrypt.genSalt(10);
     const password_hash = await bcrypt.hash(password, salt);
 
+    // Avatar Roulette: Pick a random default avatar
+    const randomAvatar = await Avatar.aggregate([
+        { $match: { type: 'default' } },
+        { $sample: { size: 1 } }
+    ]);
+
+    const initialAvatarUrl = randomAvatar.length > 0 ? randomAvatar[0].image_url : '';
+    const initialAvatarId = randomAvatar.length > 0 ? randomAvatar[0]._id : null;
+
     const user = await User.create({
       username,
       email,
       password_hash,
+      current_avatar_url: initialAvatarUrl, // Set current avatar
+      // avatar_url: initialAvatarUrl // Legacy support if needed
     });
+
+    if (user && initialAvatarId) {
+        // Unlock the initial avatar for the user
+        await UserAvatar.create({
+            user_id: user._id,
+            avatar_id: initialAvatarId
+        });
+    }
 
     if (user) {
       // Generate 6-digit verification code
@@ -203,6 +224,9 @@ export const loginUser = async (req: Request, res: Response) => {
         username: user.username,
         email: user.email,
         role: user.role,
+        xp_points: user.xp_points || 0,
+        level: user.level || 0,
+        current_avatar_url: user.current_avatar_url,
         accessToken
       });
     } else {
@@ -291,17 +315,35 @@ export const googleLogin = async (req: Request, res: Response) => {
         await user.save();
       }
     } else {
-      // Create new user
-      // Note: Password is required by schema if not modified, but we modified it to be optional
-      // We'll generate a random password just in case or leave it undefined if schema allows
+      // Create new user (Avatar Roulette if picture not preferred, or add Google pic as unlocked?)
+      // Requirement: "Avatar Roulette" on sign-up. 
+      // Let's use Avatar Roulette even for Google users to keep gamification consistent, 
+      // OR unlock the Google picture as a special avatar? 
+      // PRD says "Users are auto-assigned one of 10 Default avatars". Let's stick to that.
+      
+      const randomAvatar = await Avatar.aggregate([
+          { $match: { type: 'default' } },
+          { $sample: { size: 1 } }
+      ]);
+  
+      const initialAvatarUrl = randomAvatar.length > 0 ? randomAvatar[0].image_url : picture; // Fallback to google pic?
+      const initialAvatarId = randomAvatar.length > 0 ? randomAvatar[0]._id : null;
+
       user = await User.create({
         username: name || email!.split('@')[0],
         email,
         googleId,
-        avatar_url: picture,
-        password_hash: '', // Or handle this in model to not require it
-        is_verified: true, // Google users are verified by default
+        current_avatar_url: initialAvatarUrl,
+        password_hash: '', 
+        is_verified: true, 
       });
+
+      if (user && initialAvatarId) {
+          await UserAvatar.create({
+              user_id: user._id,
+              avatar_id: initialAvatarId
+          });
+      }
     }
 
     const { accessToken, refreshToken } = generateTokens(res, user._id.toString());
@@ -314,12 +356,42 @@ export const googleLogin = async (req: Request, res: Response) => {
       username: user.username,
       email: user.email,
       role: user.role,
+      xp_points: user.xp_points || 0,
+      level: user.level || 0,
+      current_avatar_url: user.current_avatar_url,
       accessToken,
-      avatar_url: user.avatar_url
     });
 
   } catch (error: any) {
-    console.error('Google Auth Error:', error);
     res.status(400).json({ message: 'Google Authentication Failed', error: error.message });
   }
+};
+
+// @desc    Get current user profile
+// @route   GET /api/auth/me
+// @access  Private
+export const getProfile = async (req: Request, res: Response) => {
+    try {
+        const user = await User.findById(req.user._id).select('-password');
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        res.json({
+            _id: user._id,
+            username: user.username,
+            email: user.email,
+            role: user.role,
+            xp_points: user.xp_points || 0,
+            level: user.level || 0,
+            current_avatar_url: user.current_avatar_url,
+            first_name: user.first_name,
+            last_name: user.last_name,
+            major: user.major,
+            semester: user.semester,
+            bio: user.bio,
+            avatar_url: user.current_avatar_url // legacy
+        });
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
 };

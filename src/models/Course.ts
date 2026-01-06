@@ -10,6 +10,11 @@ export interface ICourse extends Document {
         advanced: { price: number; features: string[] };
         premium: { price: number; features: string[] };
     };
+    // PRD v1.1 Fields
+    status: 'ongoing' | 'complete';
+    completion_xp_bonus?: number;
+    reward_avatar_id?: mongoose.Types.ObjectId;
+
     is_active: boolean;
     createdAt: Date;
     updatedAt: Date;
@@ -34,6 +39,11 @@ const CourseSchema: Schema = new Schema({
             features: [{ type: String }]
         }
     },
+    // PRD v1.1 Fields
+    status: { type: String, enum: ['ongoing', 'complete'], default: 'ongoing' },
+    completion_xp_bonus: { type: Number, default: 0 },
+    reward_avatar_id: { type: Schema.Types.ObjectId, ref: 'Avatar' },
+
     is_active: { type: Boolean, default: true },
 }, { timestamps: true });
 

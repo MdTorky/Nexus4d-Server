@@ -7,6 +7,17 @@ export interface IUser extends Document {
     password_hash: string;
     role: 'student' | 'tutor' | 'admin';
     avatar_url: string;
+
+    // PRD v1.1 Fields
+    first_name?: string;
+    last_name?: string;
+    major?: string;
+    semester?: string;
+    bio?: string;
+    xp_points: number;
+    level: number;
+    current_avatar_url?: string;
+
     is_verified: boolean;
     verification_code?: string;
     verification_code_expires?: Date;
@@ -22,6 +33,16 @@ const UserSchema: Schema = new Schema({
     googleId: { type: String, unique: true, sparse: true }, // Added for Google Auth
     role: { type: String, enum: ['student', 'tutor', 'admin'], default: 'student' },
     avatar_url: { type: String, default: '' },
+    // PRD v1.1 Fields
+    first_name: { type: String },
+    last_name: { type: String },
+    major: { type: String },
+    semester: { type: String },
+    bio: { type: String },
+    xp_points: { type: Number, default: 0 },
+    level: { type: Number, default: 1 },
+    current_avatar_url: { type: String },
+    
     is_verified: { type: Boolean, default: false },
     verification_code: { type: String },
     verification_code_expires: { type: Date },

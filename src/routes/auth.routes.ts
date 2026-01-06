@@ -1,5 +1,6 @@
 import { Router } from 'express';
-import { registerUser, loginUser, logoutUser, refreshToken, googleLogin, verifyEmail, resendVerificationCode } from '../controllers/auth.controller';
+import { registerUser, loginUser, logoutUser, refreshToken, googleLogin, verifyEmail, resendVerificationCode, getProfile } from '../controllers/auth.controller';
+import { protect } from '../middleware/auth.middleware';
 
 const router = Router();
 
@@ -37,5 +38,10 @@ router.post('/refresh', refreshToken);
 // @desc    Google Login
 // @access  Public
 router.post('/google', googleLogin);
+
+// @route   GET /api/auth/me
+// @desc    Get current user profile
+// @access  Private
+router.get('/me', protect, getProfile);
 
 export default router;
