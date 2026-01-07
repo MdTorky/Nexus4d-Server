@@ -227,6 +227,7 @@ export const loginUser = async (req: Request, res: Response) => {
         xp_points: user.xp_points || 0,
         level: user.level || 0,
         current_avatar_url: user.current_avatar_url,
+        avatar_unlock_tokens: user.avatar_unlock_tokens || 0,
         accessToken
       });
     } else {
@@ -384,6 +385,7 @@ export const getProfile = async (req: Request, res: Response) => {
             xp_points: user.xp_points || 0,
             level: user.level || 0,
             current_avatar_url: user.current_avatar_url,
+            avatar_unlock_tokens: user.avatar_unlock_tokens || 0,
             first_name: user.first_name,
             last_name: user.last_name,
             major: user.major,

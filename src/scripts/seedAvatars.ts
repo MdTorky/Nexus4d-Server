@@ -50,7 +50,7 @@ const seedAvatars = async () => {
         await Avatar.deleteMany({});
         console.log('Cleared existing avatars');
 
-        const defaultNames = [
+        const defaultAvatarsList = [
             // Engineering Females
             'Electrical Engineer Nexon (F)',
             'Computer Science Nexon (F)',
@@ -58,7 +58,7 @@ const seedAvatars = async () => {
             'Civil Engineer Nexon (F)',
             'Chemical Engineer Nexon (F)',
             // Individual Females
-            'Bookworm Nexon (F)', // Matches my previous name for 'Bookwork' file
+            'Bookworm Nexon (F)', 
             'Social Butterfly Nexon (F)',
 
             // Engineering Males
@@ -73,14 +73,35 @@ const seedAvatars = async () => {
             'Glitch Nexon (M)'
         ];
 
-        const avatarsWithConfig = avatars.map(a => {
-            const isDefault = defaultNames.includes(a.name);
-            return {
-                ...a,
-                type: isDefault ? 'default' : 'reward',
-                unlock_condition: isDefault ? 'none' : 'level_up', // Simple 'level_up' for now
-                is_active: true
-            };
+        let rewardLevelCounter = 2; // Start unlocking at Level 2
+
+        const avatarsWithConfig = avatars.map((avatar) => {
+            // Check if it's in the default list (using strict name match)
+            // Note: Typos in array vs file (e.g. 'Bookwork' vs 'Bookworm') handled below
+            
+            // Normalize name check because file names might have slight variations like 'Bookwork'
+            // I'll adjust the checking logic to be robust.
+            
+            const isDefault = defaultAvatarsList.includes(avatar.name) || 
+                              (avatar.name === 'Bookworm Nexon (F)' && avatar.image_url.includes('Bookwork')); // Handle typo if any
+
+            if (isDefault) {
+                return {
+                    ...avatar,
+                    type: 'default',
+                    unlock_condition: 'none',
+                    required_level: 0,
+                    is_active: true
+                };
+            } else {
+                return {
+                    ...avatar,
+                    type: 'reward',
+                    unlock_condition: 'token',
+                    required_level: 0,
+                    is_active: true
+                };
+            }
         });
 
         // Insert new avatars

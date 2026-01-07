@@ -1,21 +1,29 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import { Schema, model } from 'mongoose';
 
-export interface IChapter extends Document {
-    course_id: mongoose.Types.ObjectId;
+interface IMaterial {
     title: string;
-    order_index: number;
-    xp_reward: number; // PRD v1.1
-    materials: string[]; // URLs or R2 keys
-    createdAt: Date;
-    updatedAt: Date;
+    type: 'video' | 'pdf' | 'link' | 'slide' | 'image';
+    url: string; // R2 URL or external link
+    min_package_tier: 'basic' | 'advanced' | 'premium';
 }
 
 const ChapterSchema: Schema = new Schema({
     course_id: { type: Schema.Types.ObjectId, ref: 'Course', required: true },
     title: { type: String, required: true },
-    order_index: { type: Number, required: true },
-    xp_reward: { type: Number, default: 0 }, // PRD v1.1
-    materials: [{ type: String, default: [] }]
+    description: { type: String },
+    position: { type: Number, required: true },
+    
+    // Gamification
+    xp_reward: { type: Number, default: 50 },
+    is_free: { type: Boolean, default: false },
+
+    // Deep Materials (No single video_url anymore)
+    materials: [{
+        title: { type: String, required: true },
+        type: { type: String, enum: ['video', 'pdf', 'link', 'slide', 'image'], required: true },
+        url: { type: String, required: true },
+        min_package_tier: { type: String, enum: ['basic', 'advanced', 'premium'], default: 'basic' }
+    }]
 }, { timestamps: true });
 
-export default mongoose.model<IChapter>('Chapter', ChapterSchema);
+export default model('Chapter', ChapterSchema);

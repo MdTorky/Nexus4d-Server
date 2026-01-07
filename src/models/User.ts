@@ -17,6 +17,7 @@ export interface IUser extends Document {
     xp_points: number;
     level: number;
     current_avatar_url?: string;
+    avatar_unlock_tokens: number;
 
     is_verified: boolean;
     verification_code?: string;
@@ -42,6 +43,7 @@ const UserSchema: Schema = new Schema({
     xp_points: { type: Number, default: 0 },
     level: { type: Number, default: 1 },
     current_avatar_url: { type: String },
+    avatar_unlock_tokens: { type: Number, default: 0 }, // New field for unlock tokens
     
     is_verified: { type: Boolean, default: false },
     verification_code: { type: String },

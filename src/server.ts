@@ -32,12 +32,16 @@ import authRoutes from './routes/auth.routes';
 import courseRoutes from './routes/course.routes';
 import paymentRoutes from './routes/payment.routes';
 import userRoutes from './routes/user.routes';
+import tutorRoutes from './routes/tutor.routes';
+import notificationRoutes from './routes/notification.routes';
 
 // Mount Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/user', userRoutes);
+app.use('/api/tutors', tutorRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Base Route
 app.get('/', (req, res) => {
