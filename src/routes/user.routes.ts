@@ -10,7 +10,10 @@ import {
     simulateLevelDown,
     resetTestUser,
     getTutorsList,
-    getAdminAvatars
+    getAdminAvatars,
+    getAllUsers, // New
+    updateUserStatus, // New
+    addUserXP
 } from '../controllers/user.controller';
 
 const router = express.Router();
@@ -25,8 +28,13 @@ router.post('/avatar/unlock', protect, unlockAvatar);
 router.post('/test/level-up', protect, simulateLevelUp);
 router.post('/test/level-down', protect, simulateLevelDown);
 router.post('/test/reset', protect, resetTestUser);
+router.post('/test/add-xp', protect, addUserXP);
 
 router.get('/tutors-list', protect, getTutorsList);
 router.get('/admin/avatars-list', protect, getAdminAvatars); // New Admin Endpoint
+
+// Admin User Management
+router.get('/admin/users', protect, getAllUsers);
+router.put('/admin/users/:id/status', protect, updateUserStatus);
 
 export default router;

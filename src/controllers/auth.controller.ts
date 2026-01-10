@@ -8,7 +8,6 @@ import UserAvatar from '../models/UserAvatar';
 import generateTokens from '../utils/generateTokens';
 import { z } from 'zod';
 import sendEmail from '../utils/sendEmail';
-import crypto from 'crypto';
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -228,6 +227,12 @@ export const loginUser = async (req: Request, res: Response) => {
         level: user.level || 0,
         current_avatar_url: user.current_avatar_url,
         avatar_unlock_tokens: user.avatar_unlock_tokens || 0,
+        privacy_settings: user.privacy_settings,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        major: user.major,
+        semester: user.semester,
+        bio: user.bio,
         accessToken
       });
     } else {
@@ -360,6 +365,13 @@ export const googleLogin = async (req: Request, res: Response) => {
       xp_points: user.xp_points || 0,
       level: user.level || 0,
       current_avatar_url: user.current_avatar_url,
+      avatar_unlock_tokens: user.avatar_unlock_tokens || 0,
+      privacy_settings: user.privacy_settings,
+      first_name: user.first_name,
+      last_name: user.last_name,
+      major: user.major,
+      semester: user.semester,
+      bio: user.bio,
       accessToken,
     });
 
@@ -391,6 +403,7 @@ export const getProfile = async (req: Request, res: Response) => {
             major: user.major,
             semester: user.semester,
             bio: user.bio,
+            privacy_settings: user.privacy_settings,
             avatar_url: user.current_avatar_url // legacy
         });
     } catch (error: any) {

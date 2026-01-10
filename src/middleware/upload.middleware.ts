@@ -66,6 +66,19 @@ export const courseThumbnailUpload = multer({
     fileFilter: fileFilter
 }); 
 
+// Receipt Upload (User Request)
+export const receiptUpload = multer({
+    storage: new CloudinaryStorage({
+        cloudinary: cloudinary,
+        params: {
+            folder: 'Reciepts', // User-specified folder
+            allowed_formats: ['jpg', 'jpeg', 'png', 'pdf'],
+            resource_type: 'auto'
+        } as any,
+    }),
+    limits: { fileSize: 5 * 1024 * 1024 },
+}); 
+
 // Generic Resource Upload (Video, PDF, Slides) for R2
 export const resourceUpload = multer({
     storage: multer.memoryStorage(),
@@ -77,7 +90,8 @@ export const resourceUpload = multer({
             'video/mp4', 'video/webm', 'video/quicktime',
             'application/pdf',
             'application/vnd.ms-powerpoint',
-            'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            'image/jpeg', 'image/png', 'image/webp', 'image/gif'
         ];
         
         if (allowedTypes.includes(file.mimetype) || file.mimetype.startsWith('video/')) {

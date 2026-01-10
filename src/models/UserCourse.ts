@@ -3,10 +3,16 @@ import mongoose, { Schema, Document } from 'mongoose';
 export interface IUserCourse extends Document {
     user_id: mongoose.Types.ObjectId;
     course_id: mongoose.Types.ObjectId;
-    bought_package: 'basic' | 'advanced' | 'premium';
-    status: 'active' | 'completed';
+    amount_paid: number;
+    package: 'basic' | 'advanced' | 'premium';
+    status: 'pending' | 'active' | 'completed' | 'rejected';
     progress: number; // 0 to 100
+    completed_material_ids: mongoose.Types.ObjectId[];
     completed_chapter_ids: mongoose.Types.ObjectId[];
+    claimed_chapter_ids: mongoose.Types.ObjectId[];
+    is_course_reward_claimed: boolean;
+    receipt_url?: string;
+    rejection_reason?: string;
     last_accessed_at: Date;
     createdAt: Date;
     updatedAt: Date;
@@ -15,10 +21,16 @@ export interface IUserCourse extends Document {
 const UserCourseSchema: Schema = new Schema({
     user_id: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     course_id: { type: Schema.Types.ObjectId, ref: 'Course', required: true },
-    bought_package: { type: String, enum: ['basic', 'advanced', 'premium'], required: true },
-    status: { type: String, enum: ['active', 'completed'], default: 'active' },
+    package: { type: String, enum: ['basic', 'advanced', 'premium'], required: true },
+    amount_paid: { type: Number, required: true },
+    status: { type: String, enum: ['pending', 'active', 'completed', 'rejected'], default: 'pending' },
     progress: { type: Number, default: 0 },
+    completed_material_ids: [{ type: Schema.Types.ObjectId }], // Track individual materials
     completed_chapter_ids: [{ type: Schema.Types.ObjectId, ref: 'Chapter' }],
+    claimed_chapter_ids: [{ type: Schema.Types.ObjectId, ref: 'Chapter' }], // New: Track claimed XP
+    is_course_reward_claimed: { type: Boolean, default: false }, // New: Track course completion reward
+    receipt_url: { type: String },
+    rejection_reason: { type: String },
     last_accessed_at: { type: Date, default: Date.now }
 }, { timestamps: true });
 

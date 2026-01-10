@@ -1,6 +1,10 @@
 import { Router } from 'express';
 import { protect, admin, tutor } from '../middleware/auth.middleware';
-import { videoUpload, courseThumbnailUpload, resourceUpload } from '../middleware/upload.middleware';
+import { videoUpload, courseThumbnailUpload, resourceUpload, receiptUpload } from '../middleware/upload.middleware';
+
+// Remove redundant multer/cloudinary imports if they persist below
+// (Ensuring we use the exported one)
+
 import {
     createCourse,
     updateCourse,
@@ -13,14 +17,48 @@ import {
     getCourseForEdit,
     addMaterialToChapter,
     updateMaterial,
-    deleteMaterial
+    deleteMaterial,
+    enrollCourse,
+    getSecureCourseContent,
+    checkEnrollment,
+    getMyEnrolledCourses,
+    getPendingEnrollments,
+    approveEnrollment,
+    rejectEnrollment,
+    getAllEnrollments,
+    getEnrollmentAnalytics,
+    getCourseGlobalAnalytics,
+    toggleMaterialCompletion,
+    claimChapterReward,
+    claimCourseReward
 } from '../controllers/course.controller';
 
 const router = Router();
 
-// Public Routes
-router.get('/', getCourses);
+// Public Routes (with optional auth to check for admin)
+import { optionalAuth } from '../middleware/auth.middleware';
+router.get('/', optionalAuth, getCourses);
+
+// Student Routes (Protected) - specific paths before generic :id
+router.get('/my-courses', protect, getMyEnrolledCourses); 
+
+// Admin Enrollment Management (Must be before /:id)
+router.get('/enrollments/pending', protect, admin, getPendingEnrollments);
+router.get('/enrollments/all', protect, admin, getAllEnrollments);
+router.get('/enrollments/analytics', protect, admin, getEnrollmentAnalytics);
+router.get('/admin/analytics', protect, admin, getCourseGlobalAnalytics);
+router.post('/enrollments/:id/approve', protect, admin, approveEnrollment);
+router.post('/enrollments/:id/reject', protect, admin, rejectEnrollment);
+
 router.get('/:id', getCourseById);
+
+// Student Actions
+router.post('/:id/enroll', protect, receiptUpload.single('receipt'), enrollCourse);
+router.get('/:id/content', protect, getSecureCourseContent);
+router.post('/:id/materials/:materialId/toggle', protect, toggleMaterialCompletion);
+router.post('/:id/chapters/:chapterId/claim', protect, claimChapterReward);
+router.post('/:id/claim-rewards', protect, claimCourseReward);
+router.get('/:id/enrollment', protect, checkEnrollment);
 
 // Tutor Routes (Read Only)
 router.get('/tutor/my-courses', protect, tutor, getTutorCourses);

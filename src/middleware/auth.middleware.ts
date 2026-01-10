@@ -33,6 +33,13 @@ export const protect = async (req: Request, res: Response, next: NextFunction) =
 
             req.user = await User.findById(decoded.userId).select('-password_hash');
 
+            if (req.user && !req.user.is_active) {
+                 return res.status(403).json({ 
+                    message: 'Account Deactivated', 
+                    reason: req.user.deactivation_reason || 'See support for details.' 
+                });
+            }
+
             next();
         } catch (error) {
             console.error(error);
@@ -59,4 +66,25 @@ export const tutor = (req: Request, res: Response, next: NextFunction) => {
     } else {
         res.status(401).json({ message: 'Not authorized as a tutor' });
     }
+};
+
+export const optionalAuth = async (req: Request, res: Response, next: NextFunction) => {
+    let token;
+
+    if (
+        req.headers.authorization &&
+        req.headers.authorization.startsWith('Bearer')
+    ) {
+        try {
+            token = req.headers.authorization.split(' ')[1];
+            if (process.env.JWT_SECRET) {
+                const decoded = jwt.verify(token, process.env.JWT_SECRET) as JwtPayload;
+                req.user = await User.findById(decoded.userId).select('-password_hash');
+            }
+        } catch (error) {
+            console.error("Optional Auth Token Failed:", error);
+            // Do nothing, just continue as guest
+        }
+    }
+    next();
 };

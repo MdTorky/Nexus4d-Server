@@ -95,10 +95,17 @@ export const approveApplication = async (req: Request, res: Response) => {
         application.status = 'approved';
         await application.save();
 
-        // 2. Update User Role to 'tutor'
+        // 2. Update User Role to 'tutor' & Sync Profile Data
         const user = await User.findById(application.user_id);
         if (user) {
             user.role = 'tutor';
+            user.bio = application.bio;
+            user.expertise = application.specialization;
+            
+            // Save real profile picture to separate field
+            if (application.profile_picture_url) {
+                user.tutor_profile_image = application.profile_picture_url;
+            }
             await user.save();
         }
 
@@ -143,6 +150,76 @@ export const rejectApplication = async (req: Request, res: Response) => {
         });
 
         res.json({ message: 'Application rejected', application });
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Get tutor application analytics
+// @route   GET /api/tutors/admin/analytics
+// @access  Private/Admin
+export const getTutorAnalytics = async (req: Request, res: Response) => {
+    try {
+        const [totalApplications, statusCounts, specializationCounts, recentGrowth] = await Promise.all([
+            // 1. Total Count
+            TutorApplication.countDocuments(),
+
+            // 2. Status Breakdown
+            TutorApplication.aggregate([
+                { $group: { _id: '$status', count: { $sum: 1 } } }
+            ]),
+
+            // 3. Specialization Distribution
+            TutorApplication.aggregate([
+                { $group: { _id: '$specialization', count: { $sum: 1 } } },
+                { $sort: { count: -1 } },
+                { $limit: 10 }
+            ]),
+
+            // 4. Growth (Last 6 Months)
+            TutorApplication.aggregate([
+                {
+                    $match: {
+                        createdAt: { 
+                            $gte: new Date(new Date().setMonth(new Date().getMonth() - 6)) 
+                        }
+                    }
+                },
+                {
+                    $group: {
+                        _id: { $month: '$createdAt' },
+                        count: { $sum: 1 }
+                    }
+                },
+                { $sort: { '_id': 1 } }
+            ])
+        ]);
+
+        // Process Status Counts
+        const stats = {
+            pending: 0,
+            approved: 0,
+            rejected: 0
+        };
+        statusCounts.forEach((s: any) => {
+            if (s._id === 'pending') stats.pending = s.count;
+            if (s._id === 'approved') stats.approved = s.count;
+            if (s._id === 'rejected') stats.rejected = s.count;
+        });
+
+        // Format Growth Data
+        const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const growthData = recentGrowth.map((g: any) => ({
+            name: MONTHS[g._id - 1], // Month index is 1-based
+            count: g.count
+        }));
+
+        res.json({
+            totalApplications,
+            statusCounts: stats,
+            specializationCounts: specializationCounts.map((s: any) => ({ name: s._id, value: s.count })),
+            growthData
+        });
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }

@@ -34,6 +34,8 @@ import paymentRoutes from './routes/payment.routes';
 import userRoutes from './routes/user.routes';
 import tutorRoutes from './routes/tutor.routes';
 import notificationRoutes from './routes/notification.routes';
+import socialRoutes from './routes/social.routes';
+import avatarRoutes from './routes/avatar.routes';
 
 // Mount Routes
 app.use('/api/auth', authRoutes);
@@ -42,6 +44,8 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/tutors', tutorRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/social', socialRoutes);
+app.use('/api/avatar', avatarRoutes);
 
 // Base Route
 app.get('/', (req, res) => {

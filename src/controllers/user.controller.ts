@@ -2,16 +2,20 @@ import { Request, Response } from 'express';
 import User from '../models/User';
 import UserAvatar from '../models/UserAvatar';
 import Avatar from '../models/Avatar';
+import Course from '../models/Course';
 import { z } from 'zod';
 
 // Input Validation
 const onboardingSchema = z.object({
-    first_name: z.string().min(1),
-    last_name: z.string().min(1),
+    first_name: z.string().min(1).optional(),
+    last_name: z.string().min(1).optional(),
     major: z.string().optional(),
     semester: z.string().optional(),
     bio: z.string().max(500).optional(),
-    
+    privacy_settings: z.object({
+        show_nexons: z.boolean().optional(),
+        show_courses: z.boolean().optional()
+    }).optional()
 });
 
 // @desc    Get user profile with gamification stats
@@ -61,7 +65,15 @@ export const updateUserProfile = async (req: Request, res: Response) => {
 export const getUnlockedAvatars = async (req: Request, res: Response) => {
     try {
         // 1. Get all avatars
-        const allAvatars = await Avatar.find({ is_active: true });
+        let query: any = { is_active: true };
+        
+        // Filter out admin category if user is not admin
+        // Note: req.user type might not have role fully typed in Express.Request, assuming extended or any
+        if ((req.user as any).role !== 'admin') {
+            query.category = { $ne: 'admin' };
+        }
+
+        const allAvatars = await Avatar.find(query);
         
         // 2. Get user's unlocked avatars
         const userUnlocked = await UserAvatar.find({ user_id: req.user._id });
@@ -75,11 +87,29 @@ export const getUnlockedAvatars = async (req: Request, res: Response) => {
             type: avatar.type,
             unlock_condition: avatar.unlock_condition,
             required_level: avatar.required_level,
+            category: avatar.category,
             // Unlocked if in UserAvatar OR if it's a default type
             is_unlocked: unlockedIds.has(avatar._id.toString()) || avatar.type === 'default'
         }));
 
-        res.json(avatarsWithStatus);
+        // 4. Populate "required_course_title" for locked course rewards
+        const results = await Promise.all(avatarsWithStatus.map(async (a) => {
+            let required_course_title = undefined;
+            if (!a.is_unlocked && a.unlock_condition === 'course_completion') {
+                 // Determine which course rewards this avatar
+                 // This might be slow if there are TONs of avatars but okay for now
+                 const course = await Course.findOne({ reward_avatar_id: a._id }).select('title');
+                 if (course) {
+                     required_course_title = course.title;
+                 }
+            }
+            return {
+                ...a,
+                required_course_title
+            };
+        }));
+
+        res.json(results);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
@@ -259,11 +289,6 @@ export const resetTestUser = async (req: Request, res: Response) => {
         // that isn't type='default'.
         await UserAvatar.deleteMany({ user_id: user._id });
 
-        // 3. Reset to a default avatar if current one is now locked?
-        // Let's safe-reset to a known default or null
-        // We'll leave it as is, frontend might show "locked" avatar equipped or fallback
-        // Ideally we pick a default, but for now we just reset stats.
-        
         await user.save();
 
         res.json({
@@ -290,6 +315,7 @@ export const getTutorsList = async (req: Request, res: Response) => {
         res.status(500).json({ message: error.message });
     }
 };
+
 // @desc    Get All Avatars (Admin Dropdown)
 // @route   GET /api/admin/avatars-list
 // @access  Private (Admin)
@@ -297,6 +323,173 @@ export const getAdminAvatars = async (req: Request, res: Response) => {
     try {
         const avatars = await Avatar.find({}).sort({ name: 1 });
         res.json(avatars);
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Get All Users (Admin)
+// @route   GET /api/user/admin/users
+// @access  Private (Admin)
+// @desc    Get All Users with Stats (Admin)
+// @route   GET /api/user/admin/users
+// @access  Private (Admin)
+export const getAllUsers = async (req: Request, res: Response) => {
+    try {
+        const users = await User.find({}).select('-password_hash -refresh_token -verification_code').sort({ createdAt: -1 });
+
+        // Import models for stats aggregation
+        const FriendRequest = (await import('../models/FriendRequest')).default;
+        const Follow = (await import('../models/Follow')).default;
+        const UserCourse = (await import('../models/UserCourse')).default;
+        const Course = (await import('../models/Course')).default;
+        const UserAvatar = (await import('../models/UserAvatar')).default;
+
+        const usersWithStats = await Promise.all(users.map(async (user) => {
+            const friendsCount = await FriendRequest.countDocuments({
+                $or: [{ requester_id: user._id }, { recipient_id: user._id }],
+                status: 'accepted'
+            });
+            
+            const followingCount = await Follow.countDocuments({ follower_id: user._id });
+            const followersCount = await Follow.countDocuments({ following_id: user._id });
+            
+            // Nexons (Avatars) Count
+            const nexonsCount = await UserAvatar.countDocuments({ user_id: user._id });
+
+            // Count active or completed enrollments mainly
+            const enrolledCount = await UserCourse.countDocuments({ 
+                user_id: user._id, 
+                status: { $in: ['active', 'completed'] } 
+            });
+
+            const assignedCoursesCount = user.role === 'tutor' 
+                ? await Course.countDocuments({ tutor_id: user._id }) 
+                : 0;
+
+            return {
+                ...user.toObject(),
+                friendsCount,
+                followingCount,
+                followersCount,
+                nexonsCount,
+                enrolledCount,
+                assignedCoursesCount
+            };
+        }));
+
+        res.json(usersWithStats);
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Update User Status (Admin)
+// @route   PUT /api/user/admin/users/:id/status
+// @access  Private (Admin)
+export const updateUserStatus = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { is_active, reason } = req.body;
+
+        const user = await User.findById(id);
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        if (user.role === 'admin') {
+             return res.status(403).json({ message: 'Cannot deactivate admin accounts' });
+        }
+
+        user.is_active = is_active;
+        if (!is_active) {
+            user.deactivation_reason = reason;
+        } else {
+            user.deactivation_reason = undefined; // Clear reason on activation
+        }
+        
+        await user.save();
+
+        // --- Notifications & Emails ---
+        const sendEmail = (await import('../utils/sendEmail')).default;
+        const Notification = (await import('../models/Notification')).default;
+
+        if (is_active) {
+            // Activated
+            await sendEmail({
+                email: user.email,
+                subject: 'Account Reactivated - Nexus4D',
+                message: `Hello ${user.username},\n\nYour account has been reactivated. You can now access all features of Nexus4D.\n\nWelcome back!`
+            });
+            await Notification.create({
+                user_id: user._id,
+                type: 'success', // or 'system'
+                title: 'Account Reactivated',
+                message: 'Your account has been reactivated.',
+                link: '/'
+            });
+
+        } else {
+            // Deactivated
+            const emailMessage = `Hello ${user.username},\n\nYour account has been deactivated by an administrator.\n\nReason: ${reason || 'Violation of terms'}\n\nIf you believe this is a mistake, please contact us at ${process.env.SMTP_USER}.`;
+            
+            await sendEmail({
+                email: user.email,
+                subject: 'Account Deactivated - Nexus4D',
+                message: emailMessage
+            });
+            
+            // We can't really show a notification if they can't log in, BUT if we ever implement read-only restricted mode, they might see it. 
+            // Good to store it anyway for record.
+             await Notification.create({
+                user_id: user._id,
+                type: 'error',
+                title: 'Account Deactivated',
+                message: `Reason: ${reason || 'N/A'}`,
+                link: '#'
+            });
+        }
+
+        res.json({ message: `User ${is_active ? 'activated' : 'deactivated'}`, user });
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Add Test XP
+// @route   POST /api/user/test/add-xp
+// @access  Private
+export const addUserXP = async (req: Request, res: Response) => {
+    try {
+        const { xp } = req.body;
+        const user = await User.findById(req.user._id);
+        
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        const oldLevel = user.level || 1;
+        user.xp_points = (user.xp_points || 0) + (xp || 0);
+        
+        await user.save(); // Triggers pre-save hook for level calc
+
+        const isLeveledUp = user.level > oldLevel;
+        const tokensEarned = isLeveledUp ? (user.level - oldLevel) : 0;
+
+         if (isLeveledUp) {
+             const { default: Notification } = await import('../models/Notification');
+             await Notification.create({
+                user_id: user._id,
+                title: 'Level Up!',
+                message: `You reached Level ${user.level} and earned ${tokensEarned} Token(s)!`,
+                type: 'success'
+            });
+        }
+
+        res.json({
+            success: true,
+            xp_points: user.xp_points,
+            level: user.level,
+            avatar_unlock_tokens: user.avatar_unlock_tokens,
+            leveledUp: isLeveledUp,
+            tokensEarned
+        });
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }

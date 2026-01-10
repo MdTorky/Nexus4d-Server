@@ -1,10 +1,24 @@
 import { Schema, model } from 'mongoose';
 
-interface IMaterial {
+export interface IMaterial {
+    _id?: string;
     title: string;
+    description?: string; // Optional
     type: 'video' | 'pdf' | 'link' | 'slide' | 'image';
     url: string; // R2 URL or external link
     min_package_tier: 'basic' | 'advanced' | 'premium';
+}
+
+export interface IChapter extends Document {
+    course_id: Schema.Types.ObjectId;
+    title: string;
+    description?: string;
+    position: number;
+    xp_reward: number;
+    is_free: boolean;
+    materials: IMaterial[];
+    createdAt: Date;
+    updatedAt: Date;
 }
 
 const ChapterSchema: Schema = new Schema({
@@ -20,10 +34,11 @@ const ChapterSchema: Schema = new Schema({
     // Deep Materials (No single video_url anymore)
     materials: [{
         title: { type: String, required: true },
+        description: { type: String }, // Optional
         type: { type: String, enum: ['video', 'pdf', 'link', 'slide', 'image'], required: true },
         url: { type: String, required: true },
-        min_package_tier: { type: String, enum: ['basic', 'advanced', 'premium'], default: 'basic' }
+        min_package_tier: { type: String, enum: ['basic', 'advanced', 'premium'], default: 'basic' },
     }]
 }, { timestamps: true });
 
-export default model('Chapter', ChapterSchema);
+export default model<IChapter>('Chapter', ChapterSchema);

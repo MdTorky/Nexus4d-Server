@@ -5,6 +5,7 @@ export interface IAvatar extends Document {
     image_url: string;
     type: 'default' | 'premium' | 'reward';
     unlock_condition: 'none' | 'course_completion' | 'level_up' | 'token';
+    category: 'male' | 'female' | 'general' | 'admin';
     required_level: number;
     is_active: boolean;
     createdAt: Date;
@@ -16,7 +17,8 @@ const AvatarSchema: Schema = new Schema({
     image_url: { type: String, required: true },
     type: { type: String, enum: ['default', 'premium', 'reward'], default: 'default' },
     unlock_condition: { type: String, enum: ['none', 'course_completion', 'level_up', 'token'], default: 'none' },
-    required_level: { type: Number, default: 0 }, // New field
+    category: { type: String, enum: ['male', 'female', 'general', 'admin'], default: 'general' },
+    required_level: { type: Number, default: 0 },
     is_active: { type: Boolean, default: true }
 }, { timestamps: true });
 

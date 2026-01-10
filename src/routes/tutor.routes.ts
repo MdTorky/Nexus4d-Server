@@ -5,7 +5,8 @@ import {
     getAllApplications, 
     approveApplication, 
     rejectApplication,
-    getTutorStatus 
+    getTutorStatus,
+    getTutorAnalytics
 } from '../controllers/tutor.controller';
 
 import upload from '../middleware/upload.middleware';
@@ -20,5 +21,6 @@ router.post('/apply', protect, upload.single('profile_picture'), applyAsTutor);
 router.get('/admin/applications', protect, admin, getAllApplications);
 router.post('/admin/approve', protect, admin, approveApplication);
 router.post('/admin/reject', protect, admin, rejectApplication);
+router.get('/admin/analytics', protect, admin, getTutorAnalytics);
 
 export default router;

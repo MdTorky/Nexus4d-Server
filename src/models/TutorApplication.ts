@@ -4,6 +4,7 @@ export interface ITutorApplication extends Document {
     user_id: mongoose.Types.ObjectId;
     full_name: string;
     email: string;
+    phone: string; // New field
     specialization: string;
     bio: string;
     linkedin_profile?: string;
@@ -19,6 +20,7 @@ const TutorApplicationSchema: Schema = new Schema({
     user_id: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     full_name: { type: String, required: true },
     email: { type: String, required: true },
+    phone: { type: String, required: true }, // New field
     specialization: { type: String, required: true },
     bio: { type: String, required: true },
     linkedin_profile: { type: String },
