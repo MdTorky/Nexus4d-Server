@@ -12,6 +12,8 @@ export interface IUserCourse extends Document {
     claimed_chapter_ids: mongoose.Types.ObjectId[];
     is_course_reward_claimed: boolean;
     receipt_url?: string;
+    promo_code?: string;
+    promo_code_id?: mongoose.Types.ObjectId;
     rejection_reason?: string;
     last_accessed_at: Date;
     createdAt: Date;
@@ -30,6 +32,8 @@ const UserCourseSchema: Schema = new Schema({
     claimed_chapter_ids: [{ type: Schema.Types.ObjectId, ref: 'Chapter' }], // New: Track claimed XP
     is_course_reward_claimed: { type: Boolean, default: false }, // New: Track course completion reward
     receipt_url: { type: String },
+    promo_code: { type: String }, // Store the code string for easy display
+    promo_code_id: { type: Schema.Types.ObjectId, ref: 'PromoCode' },
     rejection_reason: { type: String },
     last_accessed_at: { type: Date, default: Date.now }
 }, { timestamps: true });

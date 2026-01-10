@@ -452,51 +452,116 @@ export const enrollCourse = async (req: Request, res: Response) => {
         
         const packageTier = (req.body.package as 'basic' | 'advanced' | 'premium') || 'basic';
         
-        // 1. Get Receipt URL (from Cloudinary Middleware)
-        if (!req.file) {
-             return res.status(400).json({ message: 'Payment receipt is required' });
+        // Calculate Final Price with Promo Code
+        let finalPrice = course.packages[packageTier]?.price || 0;
+        let discountApplied = 0;
+        let promoCodeUsed = null;
+
+        if (req.body.promoCode) {
+            const { default: PromoCode } = await import('../models/PromoCode');
+            const code = await PromoCode.findOne({ code: req.body.promoCode.toUpperCase() });
+
+            if (code && code.isActive) {
+                const now = new Date();
+                const isValidDate = now >= code.validFrom && now <= code.validUntil;
+                const limitReached = code.usageLimit && code.usedCount >= code.usageLimit;
+                
+                // Check Restrictions
+                const isApplicableCourse = !code.applicableCourses?.length || code.applicableCourses.some(cid => cid.toString() === id);
+                const isApplicablePackage = !code.applicablePackages?.length || code.applicablePackages.includes(packageTier);
+
+                if (isValidDate && !limitReached && isApplicableCourse && isApplicablePackage) {
+                    if (code.discountType === 'percentage') {
+                        discountApplied = (finalPrice * code.discountValue) / 100;
+                    } else {
+                        discountApplied = code.discountValue;
+                    }
+                    
+                    finalPrice = Math.max(0, finalPrice - discountApplied);
+                    promoCodeUsed = code;
+                }
+            }
         }
-        const receipt_url = req.file.path;
+
+        // 1. Get Receipt URL (Required only if finalPrice > 0)
+        let receipt_url = '';
+        if (finalPrice > 0) {
+            if (!req.file) {
+                return res.status(400).json({ message: 'Payment receipt is required' });
+            }
+            receipt_url = req.file.path;
+        } else {
+            receipt_url = 'COUPON_FREE'; // Placeholder for zero-cost
+        }
 
         // 2. Check existing enrollment
         const { default: UserCourse } = await import('../models/UserCourse');
         let enrollment = await UserCourse.findOne({ user_id: req.user._id, course_id: id });
 
+        // Determine Status: If free, auto-approve (completed/active). If paid, pending.
+        const newStatus = finalPrice === 0 ? 'active' : 'pending';
+
         if (enrollment) {
-            // If rejected, allow re-submission
-            if (enrollment.status === 'rejected') {
-                enrollment.status = 'pending';
+            // Update Existing Logic
+            if (enrollment.status === 'rejected' || enrollment.status === 'pending' || ((enrollment.status === 'active' || enrollment.status === 'completed') && enrollment.package !== packageTier)) {
+                
+                enrollment.status = newStatus;
                 enrollment.receipt_url = receipt_url;
                 enrollment.package = packageTier;
-                enrollment.amount_paid = course.packages[packageTier]?.price || 0;
+                enrollment.amount_paid = finalPrice;
                 enrollment.rejection_reason = undefined;
-                await enrollment.save();
-                return res.json({ message: 'Enrollment re-submitted for review', enrollment });
-            }
+                
+                if (promoCodeUsed) {
+                    enrollment.promo_code = promoCodeUsed.code;
+                    enrollment.promo_code_id = promoCodeUsed._id;
+                }
 
-            // If active, allow UPGRADE (switches back to pending for approval)
-            if (enrollment.status === 'active' && enrollment.package !== packageTier) {
-                 enrollment.status = 'pending';
-                 enrollment.receipt_url = receipt_url;
-                 enrollment.package = packageTier;
-                 enrollment.amount_paid = course.packages[packageTier]?.price || 0;
-                 await enrollment.save();
-                 return res.json({ message: 'Upgrade request submitted for review', enrollment });
+                await enrollment.save();
+
+                // If promo code used and actually free, increment count now? 
+                // Previously it was done inside the promo check block but that was premature if enrollment failed.
+                // We should increment it here if successful.
+                if (promoCodeUsed) {
+                     promoCodeUsed.usedCount += 1;
+                     await promoCodeUsed.save();
+                }
+
+                // If auto-approved (free), update course student count?
+                if (newStatus === 'active') {
+                     // We might want to trigger the approval logic (notifications etc) here,
+                     // but for now let's just save. The admin usually approves.
+                     // But if it's free, it should be instant.
+                     // Let's add student count update at least.
+                     const count = await UserCourse.countDocuments({ course_id: id, status: 'active' });
+                     await Course.findByIdAndUpdate(id, { enrolled_students: count });
+                }
+
+                return res.json({ message: finalPrice === 0 ? 'Enrollment successful' : 'Enrollment submitted for review', enrollment });
             }
-            
-            // If already active (same package) or pending
-            return res.status(400).json({ message: `Enrollment is currently ${enrollment.status}` });
+            return res.status(400).json({ message: `You are already active on the ${enrollment.package} package.` });
         }
 
-        // 3. Create New Enrollment (Pending)
+        // 3. Create New Enrollment
         enrollment = await UserCourse.create({
             user_id: req.user._id,
             course_id: id,
             package: packageTier,
-            amount_paid: course.packages[packageTier]?.price || 0,
-            status: 'pending',
-            receipt_url
+            amount_paid: finalPrice,
+            status: newStatus,
+            receipt_url,
+            promo_code: promoCodeUsed ? promoCodeUsed.code : undefined,
+            promo_code_id: promoCodeUsed ? promoCodeUsed._id : undefined
         });
+
+        if (promoCodeUsed) {
+            promoCodeUsed.usedCount += 1;
+            await promoCodeUsed.save();
+        }
+
+        if (newStatus === 'active') {
+             const count = await UserCourse.countDocuments({ course_id: id, status: 'active' });
+             await Course.findByIdAndUpdate(id, { enrolled_students: count });
+        }
 
         res.status(201).json({ message: 'Enrollment submitted for review', enrollment });
     } catch (error: any) {
@@ -572,7 +637,7 @@ export const getMyEnrolledCourses = async (req: Request, res: Response) => {
         const enrollments = await UserCourse.find({ user_id: req.user._id })
             .populate({
                 path: 'course_id',
-                select: 'title thumbnail_url description level total_duration completion_xp_bonus tutor_id',
+                select: 'title thumbnail_url description level total_duration completion_xp_bonus tutor_id major',
                 populate: {
                     path: 'tutor_id',
                     select: 'first_name last_name username current_avatar_url tutor_profile_image'

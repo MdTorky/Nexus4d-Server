@@ -71,8 +71,8 @@ export const receiptUpload = multer({
     storage: new CloudinaryStorage({
         cloudinary: cloudinary,
         params: {
-            folder: 'Reciepts', // User-specified folder
-            allowed_formats: ['jpg', 'jpeg', 'png', 'pdf'],
+            folder: 'Receipts', // User-specified folder
+            allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
             resource_type: 'auto'
         } as any,
     }),

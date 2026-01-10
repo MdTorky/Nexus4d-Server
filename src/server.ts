@@ -36,6 +36,7 @@ import tutorRoutes from './routes/tutor.routes';
 import notificationRoutes from './routes/notification.routes';
 import socialRoutes from './routes/social.routes';
 import avatarRoutes from './routes/avatar.routes';
+import promoCodeRoutes from './routes/promoCode.routes';
 
 // Mount Routes
 app.use('/api/auth', authRoutes);
@@ -46,6 +47,7 @@ app.use('/api/tutors', tutorRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/social', socialRoutes);
 app.use('/api/avatar', avatarRoutes);
+app.use('/api/promocodes', promoCodeRoutes);
 
 // Base Route
 app.get('/', (req, res) => {

@@ -53,7 +53,15 @@ router.post('/enrollments/:id/reject', protect, admin, rejectEnrollment);
 router.get('/:id', getCourseById);
 
 // Student Actions
-router.post('/:id/enroll', protect, receiptUpload.single('receipt'), enrollCourse);
+router.post('/:id/enroll', protect, (req, res, next) => {
+    receiptUpload.single('receipt')(req, res, (err) => {
+        if (err) {
+            console.error("Middleware Upload Error:", err);
+            return res.status(500).json({ message: "File upload failed", error: err.message || err });
+        }
+        next();
+    });
+}, enrollCourse);
 router.get('/:id/content', protect, getSecureCourseContent);
 router.post('/:id/materials/:materialId/toggle', protect, toggleMaterialCompletion);
 router.post('/:id/chapters/:chapterId/claim', protect, claimChapterReward);
