@@ -37,6 +37,7 @@ import notificationRoutes from './routes/notification.routes';
 import socialRoutes from './routes/social.routes';
 import avatarRoutes from './routes/avatar.routes';
 import promoCodeRoutes from './routes/promoCode.routes';
+import contactRoutes from './routes/contact.routes';
 
 // Mount Routes
 app.use('/api/auth', authRoutes);
@@ -48,6 +49,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/social', socialRoutes);
 app.use('/api/avatar', avatarRoutes);
 app.use('/api/promocodes', promoCodeRoutes);
+app.use('/api/contact', contactRoutes);
 
 // Base Route
 app.get('/', (req, res) => {

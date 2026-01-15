@@ -7,7 +7,7 @@ import Avatar from '../models/Avatar';
 import UserAvatar from '../models/UserAvatar';
 import generateTokens from '../utils/generateTokens';
 import { z } from 'zod';
-import sendEmail from '../utils/sendEmail';
+import { EmailService } from '../services/email.service';
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -71,17 +71,10 @@ export const registerUser = async (req: Request, res: Response) => {
       await user.save();
 
       // Send verification email
-      const message = `Your verification code is: ${verificationCode}. It expires in 15 minutes.`;
       try {
-          await sendEmail({
-              email: user.email,
-              subject: 'Nexus 4D - Email Verification',
-              message,
-          });
+          await EmailService.sendVerificationEmail(user.email, verificationCode);
       } catch (emailError) {
           console.error("Failed to send email", emailError);
-          // Consider what to do if email fails. Ideally, allow resend.
-          // For now, we proceed as if sent, or user can request resend (not implemented yet).
       }
 
       res.status(201).json({
@@ -137,6 +130,13 @@ export const verifyEmail = async (req: Request, res: Response) => {
         
         await user.save();
 
+        // Send Welcome Email
+        try {
+            await EmailService.sendWelcomeEmail(user.email, user.username);
+        } catch (emailError) {
+            console.error("Failed to send welcome email", emailError);
+        }
+
         res.status(200).json({
             _id: user._id,
             username: user.username,
@@ -175,13 +175,8 @@ export const resendVerificationCode = async (req: Request, res: Response) => {
         await user.save();
 
         // Send verification email
-        const message = `Your new verification code is: ${verificationCode}. It expires in 15 minutes.`;
         try {
-             await sendEmail({
-                email: user.email,
-                subject: 'Nexus 4D - New Verification Code',
-                message,
-            });
+             await EmailService.sendVerificationEmail(user.email, verificationCode);
         } catch (emailError: any) {
              console.error("Failed to send email", emailError);
              return res.status(500).json({ message: 'Failed to send verification email.' });
@@ -283,7 +278,7 @@ export const refreshToken = async (req: Request, res: Response) => {
     }
 
     const accessToken = jwt.sign({ userId: user._id }, process.env.JWT_SECRET!, {
-      expiresIn: '15m',
+      expiresIn: '1d',
     });
 
     res.json({ accessToken });

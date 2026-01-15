@@ -409,16 +409,14 @@ export const updateUserStatus = async (req: Request, res: Response) => {
         await user.save();
 
         // --- Notifications & Emails ---
-        const sendEmail = (await import('../utils/sendEmail')).default;
+        // const sendEmail = (await import('../utils/sendEmail')).default; // Remove old import
+        const { EmailService } = await import('../services/email.service'); // Dynamically import new service
         const Notification = (await import('../models/Notification')).default;
 
         if (is_active) {
             // Activated
-            await sendEmail({
-                email: user.email,
-                subject: 'Account Reactivated - Nexus4D',
-                message: `Hello ${user.username},\n\nYour account has been reactivated. You can now access all features of Nexus4D.\n\nWelcome back!`
-            });
+            await EmailService.sendAccountReactivationEmail(user.email, user.username);
+
             await Notification.create({
                 user_id: user._id,
                 type: 'success', // or 'system'
@@ -429,13 +427,7 @@ export const updateUserStatus = async (req: Request, res: Response) => {
 
         } else {
             // Deactivated
-            const emailMessage = `Hello ${user.username},\n\nYour account has been deactivated by an administrator.\n\nReason: ${reason || 'Violation of terms'}\n\nIf you believe this is a mistake, please contact us at ${process.env.SMTP_USER}.`;
-            
-            await sendEmail({
-                email: user.email,
-                subject: 'Account Deactivated - Nexus4D',
-                message: emailMessage
-            });
+            await EmailService.sendAccountDeactivationEmail(user.email, user.username, reason);
             
             // We can't really show a notification if they can't log in, BUT if we ever implement read-only restricted mode, they might see it. 
             // Good to store it anyway for record.
