@@ -345,6 +345,13 @@ export const googleLogin = async (req: Request, res: Response) => {
               avatar_id: initialAvatarId
           });
       }
+
+      // Send Welcome Email
+      try {
+          await EmailService.sendWelcomeEmail(user.email, user.username);
+      } catch (emailError) {
+          console.error("Failed to send welcome email", emailError);
+      }
     }
 
     const { accessToken, refreshToken } = generateTokens(res, user._id.toString());
