@@ -38,6 +38,7 @@ import socialRoutes from './routes/social.routes';
 import avatarRoutes from './routes/avatar.routes';
 import promoCodeRoutes from './routes/promoCode.routes';
 import contactRoutes from './routes/contact.routes';
+import newsletterRoutes from './routes/newsletter.routes';
 
 // Mount Routes
 app.use('/api/auth', authRoutes);
@@ -50,6 +51,7 @@ app.use('/api/social', socialRoutes);
 app.use('/api/avatar', avatarRoutes);
 app.use('/api/promocodes', promoCodeRoutes);
 app.use('/api/contact', contactRoutes);
+app.use('/api/newsletter', newsletterRoutes);
 
 // Base Route
 app.get('/', (req, res) => {

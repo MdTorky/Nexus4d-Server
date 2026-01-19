@@ -245,5 +245,42 @@ export const EmailService = {
             `Account Deactivated - Nexus4D`,
             getNexusTemplate('Account Deactivated', content)
         );
+    },
+
+    sendCourseAnnouncement: async (to: string, username: string, courseTitle: string, courseDescription: string, courseLink: string) => {
+        const content = `
+            <div style="text-align: center; margin-bottom: 30px;">
+                <h2 style="margin: 0 0 10px 0; color: #39ff14; font-size: 24px; font-weight: bold; text-transform: uppercase; letter-spacing: -0.5px;">New Mission Available</h2>
+                <p style="margin: 0; color: #ffffff; font-size: 12px; text-transform: uppercase; letter-spacing: 2px; font-weight: bold;">Briefing Incoming</p>
+            </div>
+
+            <p style="margin: 0 0 20px 0; line-height: 1.6; color: #cccccc;">Agent <strong>${username}</strong>,</p>
+            <p style="margin: 0 0 20px 0; line-height: 1.6; color: #cccccc;">A new mission protocol has been uploaded to the mainframe. Review the following classified intelligence:</p>
+            
+            <div style="background-color: #111; border: 1px solid #333; padding: 25px; border-radius: 15px; margin: 30px 0;">
+                <h3 style="margin: 0 0 15px 0; font-size: 20px; color: #fff; font-weight: bold;">${courseTitle}</h3>
+                <p style="margin: 0 0 20px 0; line-height: 1.6; color: #aaa; font-size: 14px;">${courseDescription}</p>
+                
+                <table role="presentation" border="0" cellspacing="0" cellpadding="0">
+                    <tr>
+                        <td align="center" bgcolor="#39ff14" style="border-radius: 8px;">
+                            <a href="${courseLink}" style="font-size: 14px; font-family: 'Segoe UI', Arial, sans-serif; color: #000000; text-decoration: none; border-radius: 8px; padding: 12px 25px; border: 1px solid #39ff14; display: inline-block; font-weight: bold; text-transform: uppercase;">
+                                View Mission Intel
+                            </a>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
+            <p style="margin: 0; font-size: 11px; color: #555; text-align: center;">
+                To opt out of mission briefings, update your privacy settings in your profile.
+            </p>
+        `;
+
+        await EmailService.sendEmail(
+            to,
+            `New Mission: ${courseTitle}`,
+            getNexusTemplate('New Mission Alert', content)
+        );
     }
 };

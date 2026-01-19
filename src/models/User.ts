@@ -27,6 +27,7 @@ export interface IUser extends Document {
 
     is_verified: boolean;
     is_active: boolean; // New Field: Account Status
+    newsletter_opt_in: boolean;
     deactivation_reason?: string;
     verification_code?: string;
     verification_code_expires?: Date;
@@ -62,6 +63,7 @@ const UserSchema: Schema = new Schema({
 
     is_verified: { type: Boolean, default: false },
     is_active: { type: Boolean, default: true }, // Default to active
+    newsletter_opt_in: { type: Boolean, default: true }, // Newsletter subscription
     deactivation_reason: { type: String },
     verification_code: { type: String },
     verification_code_expires: { type: Date },

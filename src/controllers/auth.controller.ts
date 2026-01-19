@@ -228,6 +228,7 @@ export const loginUser = async (req: Request, res: Response) => {
         major: user.major,
         semester: user.semester,
         bio: user.bio,
+        newsletter_opt_in: user.newsletter_opt_in,
         accessToken
       });
     } else {
@@ -374,6 +375,7 @@ export const googleLogin = async (req: Request, res: Response) => {
       major: user.major,
       semester: user.semester,
       bio: user.bio,
+      newsletter_opt_in: user.newsletter_opt_in,
       accessToken,
     });
 
@@ -406,6 +408,7 @@ export const getProfile = async (req: Request, res: Response) => {
             semester: user.semester,
             bio: user.bio,
             privacy_settings: user.privacy_settings,
+            newsletter_opt_in: user.newsletter_opt_in,
             avatar_url: user.current_avatar_url // legacy
         });
     } catch (error: any) {

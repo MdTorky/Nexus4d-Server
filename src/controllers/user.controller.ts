@@ -15,7 +15,8 @@ const onboardingSchema = z.object({
     privacy_settings: z.object({
         show_nexons: z.boolean().optional(),
         show_courses: z.boolean().optional()
-    }).optional()
+    }).optional(),
+    newsletter_opt_in: z.boolean().optional()
 });
 
 // @desc    Get user profile with gamification stats
