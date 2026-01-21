@@ -295,17 +295,18 @@ export const googleLogin = async (req: Request, res: Response) => {
   try {
     const { googleToken } = req.body;
 
-    const ticket = await client.verifyIdToken({
-      idToken: googleToken,
-      audience: process.env.GOOGLE_CLIENT_ID,
+
+    // Verify Access Token via UserInfo Endpoint
+    const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: `Bearer ${googleToken}` }
     });
 
-    const payload = ticket.getPayload();
-    if (!payload) {
-      return res.status(400).json({ message: 'Invalid Google Token' });
+    if (!userInfoResponse.ok) {
+        return res.status(400).json({ message: 'Invalid Google Token' });
     }
 
-    const { email, name, sub: googleId, picture } = payload;
+    const payload = await userInfoResponse.json();
+    const { email, name, sub: googleId, picture } = payload; // payload matches the needed fields
 
     // Check if user exists
     let user = await User.findOne({ $or: [{ email }, { googleId }] });
@@ -317,18 +318,13 @@ export const googleLogin = async (req: Request, res: Response) => {
         await user.save();
       }
     } else {
-      // Create new user (Avatar Roulette if picture not preferred, or add Google pic as unlocked?)
-      // Requirement: "Avatar Roulette" on sign-up. 
-      // Let's use Avatar Roulette even for Google users to keep gamification consistent, 
-      // OR unlock the Google picture as a special avatar? 
-      // PRD says "Users are auto-assigned one of 10 Default avatars". Let's stick to that.
-      
-      const randomAvatar = await Avatar.aggregate([
+      // Create new user
+       const randomAvatar = await Avatar.aggregate([
           { $match: { type: 'default' } },
           { $sample: { size: 1 } }
       ]);
   
-      const initialAvatarUrl = randomAvatar.length > 0 ? randomAvatar[0].image_url : picture; // Fallback to google pic?
+      const initialAvatarUrl = randomAvatar.length > 0 ? randomAvatar[0].image_url : picture;
       const initialAvatarId = randomAvatar.length > 0 ? randomAvatar[0]._id : null;
 
       user = await User.create({
