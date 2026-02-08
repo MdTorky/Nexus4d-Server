@@ -30,7 +30,7 @@ export const getTutorStatus = async (req: Request, res: Response) => {
 // @access  Private (User must be logged in to apply)
 export const applyAsTutor = async (req: Request, res: Response) => {
     try {
-        const { full_name, email, specialization, bio, linkedin_profile, cv_url } = req.body;
+        const { full_name, email, phone, specialization, bio, linkedin_profile, cv_url } = req.body;
         
         // Handle Image Upload
         let profile_picture_url = req.body.profile_picture_url; // Default if string passed
@@ -50,6 +50,7 @@ export const applyAsTutor = async (req: Request, res: Response) => {
             user_id,
             full_name,
             email,
+            phone,
             specialization,
             bio,
             linkedin_profile,
